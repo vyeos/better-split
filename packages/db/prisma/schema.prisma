@@ -1,0 +1,262 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum GroupType {
+  HOME
+  COUPLE
+  TRIP
+  OTHER
+}
+
+enum TransactionStatus {
+  PENDING
+  CANCELLED
+  FAILED
+  SUCCESS
+}
+
+enum SplitType {
+  EQUAL
+  PERCENTAGE
+  EXACT
+}
+
+enum GroupRole {
+  ADMIN
+  MEMBER
+}
+
+enum ActivityType {
+  EXPENSE_CREATED
+  EXPENSE_UPDATED
+  EXPENSE_DELETED
+  TRANSACTION_CREATED
+  TRANSACTION_SETTLED
+  MEMBER_JOINED
+  MEMBER_LEFT
+}
+
+model User {
+  id           String    @id @default(uuid())
+  name         String
+  email        String    @unique
+  password     String
+  payment_link String?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+
+  groupMembers GroupMember[]
+
+  transactionsSent     Transaction[] @relation("FromUser")
+  transactionsReceived Transaction[] @relation("ToUser")
+
+  expensesPaid    Expense[] @relation("PaidBy")
+  expensesCreated Expense[] @relation("CreatedBy")
+
+  expenseSplits      ExpenseSplit[]
+  groupDefaultSplits GroupDefaultSplit[]
+
+  balancesSent     GroupBalance[] @relation("BalanceFrom")
+  balancesReceived GroupBalance[] @relation("BalanceTo")
+
+  paymentRequestsSent     PaymentRequest[] @relation("PaymentFrom")
+  paymentRequestsReceived PaymentRequest[] @relation("PaymentTo")
+
+  activities Activity[]
+  groups     Group[]
+}
+
+model Group {
+  id            String    @id @default(uuid())
+  name          String
+  link          String    @unique
+  type          GroupType @default(OTHER)
+  currency      String
+  created_by    User      @relation(fields: [createdUserId], references: [id])
+  createdUserId String
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  groupMeta          GroupMeta?
+  groupMembers       GroupMember[]
+  transactions       Transaction[]
+  expenses           Expense[]
+  groupDefaultSplits GroupDefaultSplit[]
+  balances           GroupBalance[]
+  activities         Activity[]
+}
+
+model GroupMeta {
+  id      String @id @default(uuid())
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String @unique
+
+  simplified_debts Boolean
+  whiteboard       String?
+
+  default_split_type SplitType @default(EQUAL)
+
+  updated_at DateTime @updatedAt
+}
+
+model GroupDefaultSplit {
+  id String @id @default(uuid())
+
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  percentage Int
+
+  updated_at DateTime @updatedAt
+
+  @@unique([groupId, userId])
+}
+
+model GroupMember {
+  id      String @id @default(uuid())
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String
+
+  role GroupRole @default(MEMBER)
+
+  joined_at  DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  @@unique([groupId, userId])
+  @@index([userId])
+}
+
+model GroupBalance {
+  id String @id @default(uuid())
+
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+
+  fromUser   User   @relation("BalanceFrom", fields: [fromUserId], references: [id])
+  fromUserId String
+
+  toUser   User   @relation("BalanceTo", fields: [toUserId], references: [id])
+  toUserId String
+
+  amount Int
+
+  @@unique([groupId, fromUserId, toUserId])
+  @@index([groupId])
+}
+
+model Activity {
+  id String @id @default(uuid())
+
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  type     ActivityType
+  metadata Json?
+
+  created_at DateTime @default(now())
+
+  @@index([groupId])
+}
+
+model Transaction {
+  id String @id @default(uuid())
+
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+
+  to_user  User   @relation("ToUser", fields: [toUserId], references: [id])
+  toUserId String
+
+  from_user  User   @relation("FromUser", fields: [fromUserId], references: [id])
+  fromUserId String
+
+  amount     Int
+  status     TransactionStatus
+  settled_at DateTime?
+
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  paymentRequests PaymentRequest[]
+
+  @@index([groupId])
+}
+
+model Expense {
+  id String @id @default(uuid())
+
+  group   Group  @relation(fields: [groupId], references: [id])
+  groupId String
+
+  paid_by    User   @relation("PaidBy", fields: [paidUserId], references: [id])
+  paidUserId String
+
+  created_by    User   @relation("CreatedBy", fields: [createdUserId], references: [id])
+  createdUserId String
+
+  amount Int
+  note   String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  splits ExpenseSplit[]
+
+  @@index([groupId])
+}
+
+model ExpenseSplit {
+  id String @id @default(uuid())
+
+  expense   Expense @relation(fields: [expenseId], references: [id])
+  expenseId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  amount_owed Int
+
+  updated_at DateTime @updatedAt
+
+  @@index([expenseId])
+  @@index([userId])
+}
+
+model PaymentRequest {
+  id String @id @default(uuid())
+
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  transactionId String?
+
+  fromUser   User   @relation("PaymentFrom", fields: [fromUserId], references: [id])
+  fromUserId String
+
+  toUser   User   @relation("PaymentTo", fields: [toUserId], references: [id])
+  toUserId String
+
+  amount Int
+  status TransactionStatus
+
+  payment_link String
+
+  created_at DateTime @default(now())
+
+  @@index([fromUserId])
+  @@index([toUserId])
+}
