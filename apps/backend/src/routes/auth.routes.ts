@@ -76,9 +76,10 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
   .resolve(async ({ jwt, cookie: { auth }, status }) => {
     try {
       const payload = await jwt.verify(auth.value as string);
-      if (!payload || !("userId" in payload))
+      if (!payload || !("userId" in payload)) {
         return status(401, { message: "Unauthorized" });
-      return { userId: payload as string };
+      }
+      return { userId: payload.userId as string };
     } catch {
       return status(401, "Invalid or expired token");
     }
@@ -86,18 +87,20 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
   .get(
     "/me",
     async ({ userId, status }) => {
+      console.log(userId);
       try {
         const userData = await AuthService.getUserById(userId);
-
+        if (!userData) return status(404, { message: "User not found" });
         return status(200, userData);
       } catch {
-        return status(404, { message: "User not found" });
+        return status(400, { message: "Error fetching profile" });
       }
     },
     {
       response: {
-        200: AuthModel.user,
-        404: t.Object({ message: t.Literal("User not found") }),
+        200: AuthModel.meResponse,
+        404: AuthModel.meFailure,
+        400: AuthModel.meFailure,
       },
     },
   )
@@ -113,8 +116,8 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
     },
     {
       response: {
-        200: t.Array(AuthModel.debt),
-        500: t.Object({ message: t.Literal("Error fetching debts") }),
+        200: AuthModel.debtResposne,
+        500: AuthModel.debtFailure,
       },
     },
   );

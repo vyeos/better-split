@@ -22,6 +22,7 @@
         "@elysia/jwt": "^1.4.2",
         "@elysiajs/cors": "^1.4.2",
         "db": "*",
+        "dotenv": "^17.4.2",
         "elysia": "latest",
       },
       "devDependencies": {

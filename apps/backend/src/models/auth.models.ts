@@ -28,7 +28,7 @@ export const AuthModel = {
       t.Literal("User doesn't exist with this email"),
     ]),
   }),
-  user: t.Object({
+  meResponse: t.Object({
     id: t.String(),
     name: t.String(),
     email: t.String(),
@@ -36,16 +36,27 @@ export const AuthModel = {
     created_at: t.Date(),
     updated_at: t.Date(),
   }),
-  debt: t.Object({
-    id: t.String(),
-    groupId: t.String(),
-    groupName: t.String(),
-    groupCurrency: t.String(),
-    fromUserId: t.String(),
-    fromUserName: t.String(),
-    toUserId: t.String(),
-    toUserName: t.String(),
-    amount: t.Number(),
+  meFailure: t.Object({
+    message: t.Union([
+      t.Literal("User not found"),
+      t.Literal("Error fetching profile"),
+    ]),
+  }),
+  debtResposne: t.Array(
+    t.Object({
+      id: t.String(),
+      groupId: t.String(),
+      groupName: t.String(),
+      groupCurrency: t.String(),
+      fromUserId: t.String(),
+      fromUserName: t.String(),
+      toUserId: t.String(),
+      toUserName: t.String(),
+      amount: t.Number(),
+    }),
+  ),
+  debtFailure: t.Object({
+    message: t.Literal("Error fetching debts"),
   }),
 };
 

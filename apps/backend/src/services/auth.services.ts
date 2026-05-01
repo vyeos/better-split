@@ -30,7 +30,7 @@ export abstract class AuthService {
     return user;
   }
 
-  static async getUserById(userId: string): Promise<AuthModel["user"]> {
+  static async getUserById(userId: string): Promise<AuthModel["meResponse"]> {
     const user = await db.user.findUnique({
       where: { id: userId },
       select: {
@@ -46,7 +46,7 @@ export abstract class AuthService {
     return user;
   }
 
-  static async getUserDebts(userId: string): Promise<AuthModel["debt"][]> {
+  static async getUserDebts(userId: string): Promise<AuthModel["debtResposne"]> {
     const balances = await db.groupBalance.findMany({
       where: {
         OR: [{ fromUserId: userId }, { toUserId: userId }],

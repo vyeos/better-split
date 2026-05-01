@@ -5,6 +5,7 @@ import { GroupsApp } from "./routes/groups.routes";
 import { ExpensesApp } from "./routes/expenses.routes";
 import { TransactionsApp } from "./routes/transactions.routes";
 import { PaymentsApp } from "./routes/payments.routes";
+import "dotenv/config";
 
 const app = new Elysia()
   .use(
@@ -13,7 +14,10 @@ const app = new Elysia()
       credentials: true,
     }),
   )
-  .get("/", () => "Hello Elysia")
+  .get("/", () => {
+    "Hello Elysia";
+    console.log(process.env.DATABASE_URL)
+  })
   .use(AuthApp)
   .use(GroupsApp)
   .use(ExpensesApp)
