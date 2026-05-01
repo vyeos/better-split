@@ -1,9 +1,10 @@
-### APIs
+#}## APIs
 auth
   - post /login
   - post /signup
   - get /me
   - get /me/debts
+  *post /me/change-password*
 groups
   - post /
   - get /
