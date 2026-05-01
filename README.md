@@ -1,3 +1,35 @@
+### APIs
+auth
+  - post /login
+  - post /signup
+  - get /me
+  - get /me/debts
+groups
+  - post /
+  - get /
+  - get /:groupId
+  - post /:groupId/join
+  - post /:groupId/invite
+  - delete /:groupId/leave
+  - delete /:groupId
+  - get /:groupId/members
+  - patch /:groupId/members/:userId
+  - patch /:groupId
+  - post /:groupId/expenses
+  - get /:groupId/expenses
+  - get /:groupId/balances
+  - post /:groupId/settle
+  - get /:groupId/transactions
+  - get /:groupId/activity
+expenses
+  - get /:expenseId
+  - patch /:expenseId
+  - delete /:expenseId
+transactions
+  - post /:id/confirm
+payments
+  - post /:id
+
 ### Stack
 React Native
 Elysia
