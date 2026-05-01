@@ -46,7 +46,23 @@ export abstract class AuthService {
     return user;
   }
 
-  static async getUserDebts(userId: string): Promise<AuthModel["debtResposne"]> {
+  static async updateUserDetails(
+    userId: string,
+    name: string,
+    paymentLink: string,
+  ) {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        name,
+        payment_link: paymentLink
+      }
+    })
+  };
+
+  static async getUserDebts(
+    userId: string,
+  ): Promise<AuthModel["debtResposne"]> {
     const balances = await db.groupBalance.findMany({
       where: {
         OR: [{ fromUserId: userId }, { toUserId: userId }],

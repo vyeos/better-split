@@ -42,6 +42,16 @@ export const AuthModel = {
       t.Literal("Error fetching profile"),
     ]),
   }),
+meEditBody: t.Object({
+    name: t.String({ minLength: 3 }),
+    paymentLink: t.String(),
+  }),
+  meEditResponse: t.Object({
+    message: t.Literal("Changes saved successfully"),
+  }),
+  meEditFailure: t.Object({
+    message: t.Literal("Failed to save changes"),
+  }),
   debtResposne: t.Array(
     t.Object({
       id: t.String(),

@@ -104,6 +104,29 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
       },
     },
   )
+  .post(
+    "/me/edit",
+    async ({ body, status, userId }) => {
+      try {
+        await AuthService.updateUserDetails(
+          userId,
+          body.name,
+          body.paymentLink,
+        );
+        return status(200, { message: "Changes saved successfully" });
+      } catch (e) {
+        console.error(e);
+        return status(400, { message: "Failed to save changes" });
+      }
+    },
+    {
+      body: AuthModel.meEditBody,
+      response: {
+        200: AuthModel.meEditResponse,
+        400: AuthModel.meEditFailure,
+      },
+    },
+  )
   .get(
     "/me/debts",
     async ({ userId, status }) => {
