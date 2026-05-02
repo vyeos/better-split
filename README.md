@@ -1,4 +1,4 @@
-#}## APIs
+### APIs
 auth
   - post /login
   - post /signup
@@ -6,6 +6,7 @@ auth
   - get /me/debts
   *post /me/change-password*
 groups
+  *ask how many peple will join the group so that app can remind that when adding the first expense if less members*
   - post /
   - get /
   - get /:groupId

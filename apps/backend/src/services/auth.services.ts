@@ -24,7 +24,7 @@ export abstract class AuthService {
         email,
       },
     });
-    if (!user) throw new Error("User doesn't exist");
+    if (!user) throw new Error("User doesn't exist with this email");
     const validPassword = await Bun.password.verify(password, user.password);
     if (!validPassword) throw new Error("Invalid credentials");
     return user;
@@ -55,10 +55,10 @@ export abstract class AuthService {
       where: { id: userId },
       data: {
         name,
-        payment_link: paymentLink
-      }
-    })
-  };
+        payment_link: paymentLink,
+      },
+    });
+  }
 
   static async getUserDebts(
     userId: string,

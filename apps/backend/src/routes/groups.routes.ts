@@ -1,13 +1,13 @@
 import jwt from "@elysia/jwt";
-import Elysia, { t } from "elysia";
-import { GroupsModel } from "../models/groups.model";
+import Elysia from "elysia";
+import { GroupsModel, type GroupType } from "../models/groups.model";
 import { GroupsService } from "../services/groups.service";
 
 export const GroupsApp = new Elysia({ prefix: "/groups" })
   .use(
     jwt({
       name: "jwt",
-      secret: process.env.JWT_SECRET || "Fischl von Luftschloss Narfidort",
+      secret: process.env.JWT_SECRET!,
     }),
   )
   .resolve(async ({ jwt, cookie: { auth }, status }) => {
@@ -18,7 +18,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       }
       return { userId: payload.userId as string };
     } catch {
-      return status(401, "Invalid or expired token");
+      return status(401, { message: "Invalid or expired token" });
     }
   })
   .post(
@@ -28,7 +28,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
         const group = await GroupsService.createGroup(
           userId,
           body.name,
-          body.type as "HOME" | "COUPLE" | "TRIP" | "OTHER" | undefined,
+          body.type as GroupType,
           body.currency,
         );
         return status(200, {
@@ -39,8 +39,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
           currency: group.currency,
           created_at: group.created_at,
         });
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(400, { message: "Error creating group" });
       }
     },
@@ -58,8 +57,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       try {
         const groups = await GroupsService.getGroups(userId);
         return status(200, groups);
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(400, { message: "Error fetching groups" });
       }
     },
@@ -79,14 +77,13 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
           id: group.id,
           name: group.name,
           link: group.link,
-          type: group.type as string,
+          type: group.type,
           currency: group.currency,
-          created_by: group.created_by as { id: string; name: string },
+          created_by: group.created_by,
           created_at: group.created_at,
           updated_at: group.updated_at,
         });
       } catch (e) {
-        console.error(e);
         if (e instanceof Error && e.message === "Access denied") {
           return status(403, { message: "Access denied" });
         }
@@ -102,17 +99,16 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
     },
   )
   .post(
-    "/:groupId/join",
-    async ({ params: { groupId }, body, userId, status }) => {
+    "/join",
+    async ({ body, userId, status }) => {
       try {
         await GroupsService.joinGroup(userId, body.link);
         return status(200, { message: "Joined successfully" });
       } catch (e) {
-        console.error(e);
-        if (e instanceof Error && e.message.includes("Invalid")) {
+        if (e instanceof Error && e.message === "Invalid invite link") {
           return status(400, { message: "Invalid invite link" });
         }
-        if (e instanceof Error && e.message.includes("Already")) {
+        if (e instanceof Error && e.message === "Already a member") {
           return status(400, { message: "Already a member" });
         }
         return status(400, { message: "Error joining group" });
@@ -126,21 +122,27 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       },
     },
   )
+  // use group link to invite instead of groupId
   .post(
-    "/:groupId/invite",
-    async ({ params: { groupId }, userId, status }) => {
+    "/:groupLink/invite",
+    async ({ params: { groupLink }, userId, status }) => {
       try {
-        const result = await GroupsService.inviteGroup(groupId, userId);
-        return status(200, result);
+        const result = await GroupsService.inviteGroup(groupLink, userId);
+        return status(200, { message: result.message as "Joined successfully" });
       } catch (e) {
-        console.error(e);
-        return status(403, { message: "Access denied" });
+        if (e instanceof Error && e.message === "Invalid invite link") {
+          return status(400, { message: "Invalid invite link" });
+        }
+        if (e instanceof Error && e.message === "Already a member") {
+          return status(400, { message: "Already a member" });
+        }
+        return status(400, { message: "Error joining group" });
       }
     },
     {
       response: {
         200: GroupsModel.inviteGroupResponse,
-        403: GroupsModel.inviteGroupFailure,
+        400: GroupsModel.inviteGroupFailure,
       },
     },
   )
@@ -151,7 +153,6 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
         await GroupsService.leaveGroup(groupId, userId);
         return status(200, { message: "Left successfully" });
       } catch (e) {
-        console.error(e);
         if (e instanceof Error && e.message === "Not a member") {
           return status(400, { message: "Not a member" });
         }
@@ -172,8 +173,10 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
         await GroupsService.deleteGroup(groupId, userId);
         return status(200, { message: "Group deleted" });
       } catch (e) {
-        console.error(e);
-        if (e instanceof Error && e.message.includes("admin")) {
+        if (
+          e instanceof Error &&
+          e.message === "Only admins can delete the group"
+        ) {
           return status(403, { message: "Only admins can delete the group" });
         }
         return status(400, { message: "Error deleting group" });
@@ -193,8 +196,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       try {
         const members = await GroupsService.getMembers(groupId, userId);
         return status(200, members);
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(403, { message: "Access denied" });
       }
     },
@@ -217,8 +219,10 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
         );
         return status(200, { message: "Role updated" });
       } catch (e) {
-        console.error(e);
-        if (e instanceof Error && e.message.includes("admin")) {
+        if (
+          e instanceof Error &&
+          e.message === "Only admins can update roles"
+        ) {
           return status(403, { message: "Only admins can update roles" });
         }
         return status(404, { message: "Member not found" });
@@ -238,19 +242,22 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
     async ({ params: { groupId }, body, userId, status }) => {
       try {
         const group = await GroupsService.updateGroup(groupId, userId, {
-          ...body,
-          type: body.type as "HOME" | "COUPLE" | "TRIP" | "OTHER" | undefined,
+          name: body.name,
+          currency: body.currency,
+          type: body.type as GroupType,
         });
         return status(200, {
           id: group.id,
           name: group.name,
           link: group.link,
-          type: group.type as string,
+          type: group.type,
           currency: group.currency,
         });
       } catch (e) {
-        console.error(e);
-        if (e instanceof Error && e.message.includes("admin")) {
+        if (
+          e instanceof Error &&
+          e.message === "Only admins can update group"
+        ) {
           return status(403, { message: "Only admins can update group" });
         }
         return status(400, { message: "Error updating group" });
@@ -273,7 +280,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
           groupId,
           userId,
           body.amount,
-          body.note || null,
+          body.note ?? null,
           body.splits,
         );
         return status(200, {
@@ -282,8 +289,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
           note: expense.note,
           created_at: expense.created_at,
         });
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(403, { message: "Access denied" });
       }
     },
@@ -301,8 +307,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       try {
         const expenses = await GroupsService.getExpenses(groupId, userId);
         return status(200, expenses);
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(403, { message: "Access denied" });
       }
     },
@@ -319,8 +324,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       try {
         const balances = await GroupsService.getBalances(groupId, userId);
         return status(200, balances);
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(403, { message: "Access denied" });
       }
     },
@@ -338,8 +342,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
         await GroupsService.settle(groupId, userId, body.toUserId);
         return status(200, { message: "Settled successfully" });
       } catch (e) {
-        console.error(e);
-        if (e instanceof Error && e.message.includes("No balance")) {
+        if (e instanceof Error && e.message === "No balance to settle") {
           return status(400, { message: "No balance to settle" });
         }
         return status(403, { message: "Access denied" });
@@ -358,10 +361,12 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
     "/:groupId/transactions",
     async ({ params: { groupId }, userId, status }) => {
       try {
-        const transactions = await GroupsService.getTransactions(groupId, userId);
+        const transactions = await GroupsService.getTransactions(
+          groupId,
+          userId,
+        );
         return status(200, transactions);
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(403, { message: "Access denied" });
       }
     },
@@ -378,8 +383,7 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
       try {
         const activity = await GroupsService.getActivity(groupId, userId);
         return status(200, activity);
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(403, { message: "Access denied" });
       }
     },

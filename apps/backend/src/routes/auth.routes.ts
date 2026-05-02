@@ -60,9 +60,13 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
         });
         return status(200, { message: "Signed In Successfully" });
       } catch (e) {
-        if (e instanceof Error && e.message.includes("exists"))
+        if (
+          e instanceof Error &&
+          e.message == "User doesn't exist with this email"
+        ) {
           return status(400, { message: "User doesn't exist with this email" });
-        else return status(400, { message: "Invalid credentials" });
+        }
+        return status(400, { message: "Invalid credentials" });
       }
     },
     {
@@ -81,13 +85,12 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
       }
       return { userId: payload.userId as string };
     } catch {
-      return status(401, "Invalid or expired token");
+      return status(401, { message: "Invalid or expired token" });
     }
   })
   .get(
     "/me",
     async ({ userId, status }) => {
-      console.log(userId);
       try {
         const userData = await AuthService.getUserById(userId);
         if (!userData) return status(404, { message: "User not found" });
@@ -114,8 +117,7 @@ export const AuthApp = new Elysia({ prefix: "/auth" })
           body.paymentLink,
         );
         return status(200, { message: "Changes saved successfully" });
-      } catch (e) {
-        console.error(e);
+      } catch {
         return status(400, { message: "Failed to save changes" });
       }
     },

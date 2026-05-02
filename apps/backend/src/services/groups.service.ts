@@ -8,7 +8,7 @@ export abstract class GroupsService {
   static async createGroup(
     userId: string,
     name: string,
-    type: "HOME" | "COUPLE" | "TRIP" | "OTHER" = "OTHER",
+    type: "HOME" | "COUPLE" | "TRIP" | "OTHER" = "TRIP",
     currency: string = "USD",
   ) {
     const group = await db.group.create({
@@ -103,20 +103,27 @@ export abstract class GroupsService {
     return group;
   }
 
-  static async inviteGroup(groupId: string, userId: string) {
-    const membership = await db.groupMember.findFirst({
-      where: { groupId, userId },
+  static async inviteGroup(groupLink: string, userId: string) {
+    const group = await db.group.findFirst({
+      where: { link: groupLink },
     });
 
-    if (!membership) throw new Error("Access denied");
+    if (!group) throw new Error("Invalid invite link");
 
-    const group = await db.group.findUnique({
-      where: { id: groupId },
+    const existingMember = await db.groupMember.findFirst({
+      where: { groupId: group.id, userId },
     });
 
-    if (!group) throw new Error("Group not found");
+    if (existingMember) throw new Error("Already a member");
 
-    return { link: group.link };
+    await db.groupMember.create({
+      data: {
+        groupId: group.id,
+        userId,
+      },
+    });
+
+    return { message: "Joined successfully" };
   }
 
   static async leaveGroup(groupId: string, userId: string) {
@@ -126,17 +133,31 @@ export abstract class GroupsService {
 
     if (!membership) throw new Error("Not a member");
 
-    await db.groupMember.delete({
-      where: { id: membership.id },
-    });
-
-    const remainingMembers = await db.groupMember.count({
+    const remainingMembers = await db.groupMember.findMany({
       where: { groupId },
     });
 
-    if (remainingMembers === 0) {
-      await db.group.delete({ where: { id: groupId } });
+    if (remainingMembers.length === 1) {
+      throw new Error("Can't leave the group if you are the last member");
     }
+
+    if (membership.role === "ADMIN") {
+      const otherAdmins = remainingMembers.filter((m) => m.role === "ADMIN" && m.id !== membership.id);
+
+      if (otherAdmins.length === 0) {
+        const newAdmin = remainingMembers.find((m) => m.id !== membership.id);
+        if (newAdmin) {
+          await db.groupMember.update({
+            where: { id: newAdmin.id },
+            data: { role: "ADMIN" },
+          });
+        }
+      }
+    }
+
+    await db.groupMember.delete({
+      where: { id: membership.id },
+    });
   }
 
   static async deleteGroup(groupId: string, userId: string) {
@@ -204,7 +225,11 @@ export abstract class GroupsService {
   static async updateGroup(
     groupId: string,
     userId: string,
-    data: { name?: string; currency?: string; type?: "HOME" | "COUPLE" | "TRIP" | "OTHER" },
+    data: {
+      name?: string;
+      currency?: string;
+      type?: "HOME" | "COUPLE" | "TRIP" | "OTHER";
+    },
   ) {
     const membership = await db.groupMember.findFirst({
       where: { groupId, userId },
@@ -356,7 +381,8 @@ export abstract class GroupsService {
       },
     });
 
-    if (!balance || balance.amount <= 0) throw new Error("No balance to settle");
+    if (!balance || balance.amount <= 0)
+      throw new Error("No balance to settle");
 
     const transaction = await db.transaction.create({
       data: {

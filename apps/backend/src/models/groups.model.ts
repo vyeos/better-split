@@ -1,9 +1,12 @@
 import { t, UnwrapSchema } from "elysia";
 
+export const GROUP_TYPES = ["HOME", "COUPLE", "TRIP", "OTHER"] as const;
+export type GroupType = (typeof GROUP_TYPES)[number];
+
 export const GroupsModel = {
   createGroupBody: t.Object({
     name: t.String({ minLength: 1 }),
-    type: t.Optional(t.String({ enum: ["HOME", "COUPLE", "TRIP", "OTHER"] })),
+    type: t.Optional(t.String({ enum: GROUP_TYPES })),
     currency: t.Optional(t.String()),
   }),
   createGroupResponse: t.Object({
@@ -62,11 +65,13 @@ export const GroupsModel = {
     ]),
   }),
   inviteGroupResponse: t.Object({
-    link: t.String(),
+    message: t.Literal("Joined successfully"),
   }),
-  inviteGroupFailure: t.Object({
-    message: t.Literal("Access denied"),
-  }),
+  inviteGroupFailure: t.Union([
+    t.Object({ message: t.Literal("Invalid invite link") }),
+    t.Object({ message: t.Literal("Already a member") }),
+    t.Object({ message: t.Literal("Error joining group") }),
+  ]),
   leaveGroupResponse: t.Object({
     message: t.Literal("Left successfully"),
   }),
@@ -116,7 +121,7 @@ export const GroupsModel = {
   updateGroupBody: t.Object({
     name: t.Optional(t.String({ minLength: 1 })),
     currency: t.Optional(t.String()),
-    type: t.Optional(t.String({ enum: ["HOME", "COUPLE", "TRIP", "OTHER"] })),
+    type: t.Optional(t.String({ enum: GROUP_TYPES })),
   }),
   updateGroupResponse: t.Object({
     id: t.String(),
