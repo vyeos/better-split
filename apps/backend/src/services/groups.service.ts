@@ -183,7 +183,7 @@ export abstract class GroupsService {
       where: { groupId },
       include: {
         user: {
-          select: { id: true, name: true, email: true },
+          select: { id: true, name: true, email: true, payment_link: true },
         },
       },
     });
