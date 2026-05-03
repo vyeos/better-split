@@ -32,18 +32,13 @@ transactions
   - post /:id/confirm
 payments
   - post /:id
-  
-Transactions (/transactions):
-- GET / - List all transactions
-- GET /:id - Get transaction by ID
-- POST /:id/confirm - Confirm a transaction
-Payments (/payments):
-- GET / - List all payments (sent & received)
-- GET /sent - List sent payments
-- GET /received - List received payments  
-- GET /:id - Get payment by ID
-- POST /:id/accept - Accept a payment
-- POST /:id/reject - Reject a payment
+
+*Suggessions*
+- get /activities - Get activity feed for a user across all groups
+- get /:groupId/activities - Get activity feed for a group
+- get /groups/:groupId/meta - get group settings (whiteboard, simplified_debts, default_split_type)
+- post /groups/:groupId/meta - update group settings (whiteboard, simplified_debts, default_split_type)
+- post /groups/:groupId/default-splits - Manage default splits per user
 
 ### Stack
 React Native

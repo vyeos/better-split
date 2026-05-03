@@ -1,7 +1,9 @@
 import jwt from "@elysia/jwt";
-import Elysia from "elysia";
+import Elysia, { t } from "elysia";
 import { GroupsModel, type GroupType } from "../models/groups.model";
 import { GroupsService } from "../services/groups.service";
+import { GroupSettingsService } from "../services/group-settings.service";
+import { ActivitiesService } from "../services/activities.services";
 
 export const GroupsApp = new Elysia({ prefix: "/groups" })
   .use(
@@ -392,5 +394,110 @@ export const GroupsApp = new Elysia({ prefix: "/groups" })
         200: GroupsModel.getActivityResponse,
         403: GroupsModel.getActivityFailure,
       },
+    },
+  )
+  .get(
+    "/:groupId/activities",
+    async ({ params: { groupId }, userId, status }) => {
+      try {
+        const activities = await ActivitiesService.getGroupActivities(groupId, userId);
+        return status(200, activities);
+      } catch (e) {
+        if (e instanceof Error && e.message === "Access denied") {
+          return status(403, { message: "Access denied" });
+        }
+        return status(400, { message: "Error fetching activities" });
+      }
+    },
+  )
+  .get(
+    "/:groupId/meta",
+    async ({ params: { groupId }, userId, status }) => {
+      try {
+        const meta = await GroupSettingsService.getGroupMeta(groupId, userId);
+        return status(200, meta);
+      } catch (e) {
+        if (e instanceof Error && e.message === "Access denied") {
+          return status(403, { message: "Access denied" });
+        }
+        return status(400, { message: "Error fetching group settings" });
+      }
+    },
+  )
+  .post(
+    "/:groupId/meta",
+    async ({ params: { groupId }, body, userId, status }) => {
+      try {
+        const meta = await GroupSettingsService.updateGroupMeta(groupId, userId, {
+          simplified_debts: body.simplified_debts,
+          whiteboard: body.whiteboard,
+          default_split_type: body.default_split_type,
+        });
+        return status(200, meta);
+      } catch (e) {
+        if (e instanceof Error && e.message === "Access denied") {
+          return status(403, { message: "Access denied" });
+        }
+        if (e instanceof Error && e.message === "Only admins can update settings") {
+          return status(403, { message: "Only admins can update settings" });
+        }
+        return status(400, { message: "Error updating group settings" });
+      }
+    },
+    {
+      body: t.Object({
+        simplified_debts: t.Optional(t.Boolean()),
+        whiteboard: t.Optional(t.String()),
+        default_split_type: t.Optional(t.Union([
+          t.Literal("EQUAL"),
+          t.Literal("PERCENTAGE"),
+          t.Literal("EXACT"),
+        ])),
+      }),
+    },
+  )
+  .get(
+    "/:groupId/default-splits",
+    async ({ params: { groupId }, userId, status }) => {
+      try {
+        const splits = await GroupSettingsService.getDefaultSplits(groupId, userId);
+        return status(200, splits);
+      } catch (e) {
+        if (e instanceof Error && e.message === "Access denied") {
+          return status(403, { message: "Access denied" });
+        }
+        return status(400, { message: "Error fetching default splits" });
+      }
+    },
+  )
+  .post(
+    "/:groupId/default-splits",
+    async ({ params: { groupId }, body, userId, status }) => {
+      try {
+        await GroupSettingsService.setDefaultSplits(groupId, userId, body.splits);
+        return status(200, { message: "Default splits updated" });
+      } catch (e) {
+        if (e instanceof Error && e.message === "Access denied") {
+          return status(403, { message: "Access denied" });
+        }
+        if (e instanceof Error && e.message === "Only admins can set default splits") {
+          return status(403, { message: "Only admins can set default splits" });
+        }
+        if (e instanceof Error && e.message.includes("not a group member")) {
+          return status(400, { message: e.message });
+        }
+        if (e instanceof Error && e.message === "Percentages must sum to 100") {
+          return status(400, { message: "Percentages must sum to 100" });
+        }
+        return status(400, { message: "Error setting default splits" });
+      }
+    },
+    {
+      body: t.Object({
+        splits: t.Array(t.Object({
+          userId: t.String(),
+          percentage: t.Number(),
+        })),
+      }),
     },
   );
