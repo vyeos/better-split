@@ -4,9 +4,10 @@ auth
   - post /signup
   - get /me
   - get /me/debts
-  *post /me/change-password*
+  - *post /me/change-password*
+  - *patch /me/edit*
 groups
-  *ask how many peple will join the group so that app can remind that when adding the first expense if less members*
+  - *ask how many peple will join the group so that app can remind that when adding the first expense if less members*
   - post /
   - get /
   - get /:groupId
@@ -31,6 +32,18 @@ transactions
   - post /:id/confirm
 payments
   - post /:id
+  
+Transactions (/transactions):
+- GET / - List all transactions
+- GET /:id - Get transaction by ID
+- POST /:id/confirm - Confirm a transaction
+Payments (/payments):
+- GET / - List all payments (sent & received)
+- GET /sent - List sent payments
+- GET /received - List received payments  
+- GET /:id - Get payment by ID
+- POST /:id/accept - Accept a payment
+- POST /:id/reject - Reject a payment
 
 ### Stack
 React Native
